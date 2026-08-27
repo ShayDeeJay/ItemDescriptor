@@ -2,13 +2,10 @@ package org.shaydee.item_descriptor
 
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
-import net.minecraft.client.gui.components.Button.OnPress
 import net.minecraft.client.gui.components.ImageButton
 import net.minecraft.client.gui.components.WidgetSprites
 import net.minecraft.client.sounds.SoundManager
 import net.minecraft.network.chat.Component
-import net.minecraft.resources.ResourceLocation
-import net.minecraft.sounds.SoundEvent
 import net.minecraft.sounds.SoundEvents
 import net.minecraft.util.FastColor
 import org.shaydee.shaydeeapi.client.Icons
@@ -17,9 +14,8 @@ import org.shaydee.shaydeeapi.helpers.ClientHelpers.icon
 import org.shaydee.shaydeeapi.helpers.ClientHelpers.refinedTooltip
 import org.shaydee.shaydeeapi.helpers.ColourHelpers
 import org.shaydee.shaydeeapi.helpers.SoundHelpers
-import org.shaydee.shaydeeapi.helpers.TextHelpers
 
-class Button(
+class CustomButton(
     pX: Int,
     pY: Int,
     private val defaultSize: Int,
@@ -29,10 +25,9 @@ class Button(
     private val canPress: Boolean,
     private val buttonOverlay: MultiIconType? = null,
     private val colour: Int = -1,
-    private val icon: ResourceLocation = Icons.MENU_BUTTON.icon(),
-    private val onHover: () -> Unit = {},
+    private val onHover: (graphics: GuiGraphics, mouseX: Int, mouseY: Int) -> Unit = { a, b, c -> },
     private val pOnPress: OnPress
-) : ImageButton(pX, pY, defaultSize, defaultSize, WidgetSprites(icon, icon), pOnPress) {
+) : ImageButton(pX, pY, defaultSize, defaultSize, WidgetSprites(Icons.MENU_BUTTON.icon(), Icons.MENU_BUTTON.icon()), pOnPress) {
 
     private val totalSize: Int = defaultSize
 
@@ -46,6 +41,9 @@ class Button(
 
     override fun renderWidget(graphics: GuiGraphics, mouseX: Int, mouseY: Int, pPartialTick: Float) {
         val mc = Minecraft.getInstance()
+
+        if (this.isMouseOver(mouseX.toDouble(), mouseY.toDouble())) onHover(graphics, mouseX, mouseY)
+
         val colourFaded = if(colour == -1) FastColor.ARGB32.color(190, ColourHelpers.cosmicPurple) else colour
         val i1 = totalSize / 2 - 3
 
@@ -101,10 +99,10 @@ class Button(
 //            else -> TextHelpers.withStyleComponentTrans("jahdoo_kotlin.text.non_assigned", ColourHelpers.headerColour, slotNumber)
 //        }
 
-        if(get != Component.empty()) {
-            graphics.pose().translate(0F, 0F, 100F)
-            graphics.refinedTooltip(mouseX, mouseY + 10, mutableListOf(get))
-        }
+//        if(get != Component.empty()) {
+//            graphics.pose().translate(0F, 0F, 100F)
+//            graphics.refinedTooltip(mouseX, mouseY + 10, mutableListOf(get))
+//        }
     }
 
 

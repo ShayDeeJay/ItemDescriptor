@@ -1,5 +1,4 @@
 {
   "itemGroup.item_descriptor": "Example Mod Tab",
-  "block.item_descriptor.example_block": "Example Block",
-  "item.item_descriptor.example_item": "Example Item"
+  "item_descriptor.text.l_control": "L-Ctrl"
 }
