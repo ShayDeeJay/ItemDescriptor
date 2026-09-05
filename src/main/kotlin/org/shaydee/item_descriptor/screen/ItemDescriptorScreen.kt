@@ -26,10 +26,13 @@ import org.shaydee.shaydeeapi.client.MultiIconType
 import org.shaydee.shaydeeapi.helpers.ClientHelpers
 import org.shaydee.shaydeeapi.helpers.ClientHelpers.bezelMaker
 import org.shaydee.shaydeeapi.helpers.ClientHelpers.boxMaker
+import org.shaydee.shaydeeapi.helpers.ClientHelpers.centerAlignment
 import org.shaydee.shaydeeapi.helpers.ClientHelpers.centerX
 import org.shaydee.shaydeeapi.helpers.ClientHelpers.centerY
+import org.shaydee.shaydeeapi.helpers.ClientHelpers.customisableIcon
 import org.shaydee.shaydeeapi.helpers.ClientHelpers.drawCenterComponent
 import org.shaydee.shaydeeapi.helpers.ClientHelpers.fadeBlack
+import org.shaydee.shaydeeapi.helpers.ClientHelpers.icon
 import org.shaydee.shaydeeapi.helpers.ClientHelpers.refinedTooltip
 import org.shaydee.shaydeeapi.helpers.ClientHelpers.stringWithBackground
 import org.shaydee.shaydeeapi.helpers.ColourHelpers
@@ -68,7 +71,7 @@ class ItemDescriptorScreen (
     var actualSize = 160F
     var panText = 0.0
     var withPadding = actualSize + 10
-    val shiftWithY = -18
+    val shiftWithY = 0
     var startX1 = (graphics.centerX() - withPadding / 2).toInt() - shiftWithX()
     var startY1 = (graphics.centerY() - withPadding / 2).toInt() - shiftWithY
     var widthOffset = withPadding.toInt() / 2
@@ -120,9 +123,8 @@ class ItemDescriptorScreen (
     }
 
     private fun ItemDescriptorScreen.extraBlur(partialTick: Float) {
-        this.renderBlurredBackground(partialTick)
-        this.renderBlurredBackground(partialTick)
-        this.renderBlurredBackground(partialTick)
+        this.renderBackground(graphics, 0, 0, partialTick)
+        this.renderTransparentBackground(graphics)
     }
 
     fun smoothingAnimations() {
@@ -182,14 +184,15 @@ class ItemDescriptorScreen (
         maxY = startY1 + withPadding.toInt() - 2
 
         val posX = width / 2 - if(hasValidDescription()) 185 else 101
-        val posY = height / 2 - 4
+        val buttons = ButtonTypes.entries.filter { it.condition(this) }
+        val posY = height / 2 - (buttons.size*8) + 2
+
         this.renderable { gui, mouseX, mouseY, partial ->
-            gui.boxMaker(posX-3, posY-3, 10, 26, headerColour, ColourHelpers.boxColour)
+            gui.boxMaker(posX-3, posY-3, 10, (buttons.size*8) + 2, headerColour, ColourHelpers.boxColour)
         }
 
         var spacer = 0
-        ButtonTypes.entries.forEach {
-            if(!it.condition(this)) return@forEach
+        buttons.forEach {
             this.addRenderableWidget(
                 sharedButton(posX, posY + spacer, it.displayName, it.details(this)){
                     this.rebuildWidgets()
@@ -203,14 +206,13 @@ class ItemDescriptorScreen (
     override fun render(graphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
         if(codec.isEmpty) return
         extraBlur(partialTick)
-
         smoothingAnimations()
         slideGuiStats()
         renderHeader(graphics)
         bezel(graphics)
+        additionalInformation(graphics, mouseX, mouseY)
         description(graphics, mouseX, mouseY)
         renderItem(graphics, mouseX, mouseY)
-        additionalInformation(graphics, mouseX, mouseY)
         itemTooltip(mouseX, mouseY, graphics)
         renderWidgets(graphics, mouseX, mouseY, partialTick)
     }
@@ -252,8 +254,8 @@ class ItemDescriptorScreen (
 
         pose.pushPose()
         pose.scale(scale, scale, scale)
-        val y1 = graphics.centerY()/2 - shiftWithY - 70
-        val x1 = graphics.centerX()/2
+        val x1 = graphics.centerX()/2 + 1
+        val y1 = graphics.centerY()/2 - (shiftWithY*2) - 58
         val color = codec.hoverName.style.color?.value
         val targetColor = color ?: uiColour()
         val text = TextHelpers.withStyleComponentTrans(codec.hoverName.string, targetColor)
@@ -312,20 +314,22 @@ class ItemDescriptorScreen (
 
     private fun additionalInformation(graphics: GuiGraphics, mouseX: Int, mouseY: Int) {
         val mc = minecraft ?: return
-        val sharedY = graphics.centerY() + 138
+        val sharedY = graphics.centerY() + shiftWithY + 112
         val others = DescriptionManager.getDescription(codec.item)?.associatedItems ?: return
         if(others.isEmpty()) return
         val associated = "associated".prefixComponent(ColourHelpers.goldCoin)
 
         val width = max(others.size * 12, 34)
-        graphics.drawCenterComponent(associated, graphics.centerX(), sharedY - 16, 0)
-        graphics.boxMaker(graphics.centerX() - width, sharedY - 22, width, 20, headerColour, ColourHelpers.boxColour)
+        val sharedX = graphics.centerX() + 1
+        graphics.customisableIcon(Icons.ATTACHMENT.icon(), sharedX,sharedY - 24, size = 22, rotation = 180f)
+        graphics.drawCenterComponent(associated, sharedX, sharedY - 16, 0)
+        graphics.boxMaker(sharedX - width, sharedY - 22, width, 20, headerColour, ColourHelpers.boxColour)
 
         var spacer = 0
         val itemSize = 16
         val spacing = 20
         val totalWidth = (others.size - 1) * spacing + itemSize
-        val startX = graphics.centerX() - totalWidth / 2
+        val startX = sharedX - totalWidth / 2
         others.forEachIndexed { index, it ->
             val x = startX + index * spacing
             val split = it.split(".")
@@ -348,10 +352,10 @@ class ItemDescriptorScreen (
         }
 
         val x = graphics.centerX() + 4
-        val y = (graphics.centerY() - this.fade).toInt() + 80
+        val y = (graphics.centerY() - this.fade).toInt() + 81
         when (val recipeType = recipeType) {
             null -> renderDescription(graphics, x, y, mouseX, mouseY, getMc())
-            else -> graphics.renderRecipes(recipeType, x, y, mouseX, mouseY)
+            else -> graphics.renderRecipes(this, recipeType, x, y, mouseX, mouseY)
         }
     }
 
@@ -360,15 +364,15 @@ class ItemDescriptorScreen (
         val text = TextHelpers.withStyleComponentTrans(itemDescription, subHeaderColour)
         val description = TextHelpers.multiLineComponent(text.string, headerColour, ColourHelpers.offWhite, "", 290, true).toMutableList()
 
-        if(codec.tags.toList().isNotEmpty()) {
-            if(itemDescription.isNotEmpty()) description.spacer()
-            description.add(Component.literal("Tags"))
-        }
-
-        codec.tags.forEach {
-            description.addAll(TextHelpers.multiLineComponent(it.location.toString(), headerColour, headerColour, "", 300, true))
-            description.spacer()
-        }
+//        if(codec.tags.toList().isNotEmpty()) {
+//            if(itemDescription.isNotEmpty()) description.spacer()
+//            description.add(Component.literal("Tags"))
+//        }
+//
+//        codec.tags.forEach {
+//            description.addAll(TextHelpers.multiLineComponent(it.location.toString(), headerColour, headerColour, "", 300, true))
+//            description.spacer()
+//        }
 
         return description
     }

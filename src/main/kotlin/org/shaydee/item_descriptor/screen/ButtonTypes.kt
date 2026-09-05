@@ -1,5 +1,6 @@
 package org.shaydee.item_descriptor.screen
 
+import com.ibm.icu.text.DisplayContext
 import net.minecraft.commands.arguments.ResourceLocationArgument.getRecipe
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
@@ -30,6 +31,7 @@ enum class ButtonTypes(
             it.targetPanY = it.panY
             it.zoomX = 0.0
             it.smoothToX = it.zoomX
+            it.displayContext = ItemDisplayContext.GUI
         }
     ),
 
@@ -59,7 +61,7 @@ enum class ButtonTypes(
     ),
 
     RECIPE(
-        Icons.HINT.icon(),
+        Icons.CRAFTING.icon(),
         { it.getRecipe().isNotEmpty() },
         {
             val recipeSuffix = (it.recipeType != null).toString().capsFirst().toComponent()
