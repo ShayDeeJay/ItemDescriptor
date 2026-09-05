@@ -2,28 +2,29 @@ package org.shaydee.item_descriptor.screen
 
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.commands.arguments.ResourceLocationArgument.getRecipe
+import net.minecraft.data.recipes.SmithingTransformRecipeBuilder.smithing
 import net.minecraft.network.chat.Component
-import net.minecraft.resources.ResourceLocation
+import net.minecraft.network.codec.ByteBufCodecs.collection
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
+import net.minecraft.world.item.crafting.Ingredient
 import net.minecraft.world.item.crafting.RecipeHolder
+import net.minecraft.world.item.crafting.ShapedRecipe
+import net.minecraft.world.item.crafting.SmithingTransformRecipe
 import net.neoforged.api.distmarker.Dist
 import net.neoforged.api.distmarker.OnlyIn
-import org.shaydee.item_descriptor.CustomButton
 import org.shaydee.shaydeeapi.Helpers.cycleEntries
 import org.shaydee.shaydeeapi.client.Icons
-import org.shaydee.shaydeeapi.client.MultiIconType
 import org.shaydee.shaydeeapi.helpers.ClientHelpers.customisableIcon
 import org.shaydee.shaydeeapi.helpers.ClientHelpers.displayString
 import org.shaydee.shaydeeapi.helpers.ClientHelpers.icon
-import org.shaydee.shaydeeapi.helpers.ClientHelpers.refinedTooltip
 import org.shaydee.shaydeeapi.helpers.ClientHelpers.stringWithBackground
 import org.shaydee.shaydeeapi.helpers.ColourHelpers
 import org.shaydee.shaydeeapi.helpers.ColourHelpers.netheriteBox
 import org.shaydee.shaydeeapi.helpers.ColourHelpers.subHeaderColour
 import org.shaydee.shaydeeapi.helpers.RenderHelpers.customItemRenderer
-import org.shaydee.shaydeeapi.helpers.RenderHelpers.customItemRendererQ
-import org.shaydee.shaydeeapi.helpers.TextHelpers.capsFirst
+import org.shaydee.shaydeeapi.helpers.TextHelpers
 
 @OnlyIn(Dist.CLIENT)
 object ScreenHelper {
@@ -67,53 +68,58 @@ object ScreenHelper {
         mouseY: Int,
     ) {
         val mc = Minecraft.getInstance()
-        val font = mc.font
-        val startX = x + 54
-        val startY = y + screen.shiftWithY + 18
-        val itemSize = 16
         val level = mc.level ?: return
         val tickCount = mc.player?.tickCount ?: 0
         val current = recipeType.cycleEntries(tickCount)
-        var itemCount = 0
-        var rows = 0
-        var spaceX = 0
-        val empty = MutableList(9) { listOf(ItemStack.EMPTY) }
 
         current?.let { recipe ->
-            val name = current.value.type
+            val getRecipe = current.value
 
-            recipe.value.ingredients.forEachIndexed { i, ingredient ->
-                empty[i] = ingredient.items.toList()
-            }
+            val isSmithing = getRecipe is SmithingTransformRecipe
+            val font = mc.font
+            val startX = x + 54
+            val startY = y + screen.shiftWithY + if(isSmithing) -2 else 18
+            val itemSize = 16
+            var itemCount = 0
+            var rows = 0
+            var spaceX = 0
+            val crafting = MutableList(9) { emptyList<ItemStack>() }
+            val smithing = MutableList(3) { emptyList<ItemStack>() }
 
-            empty.forEach {
-                val x = startX + spaceX
-                val y = startY + rows
-                val itemStack = it.cycleEntries(tickCount, 20) ?: ItemStack.EMPTY
-                customItemRenderer(itemStack, x, y)
-                icon(Icons.MENU_BUTTON.icon(), 18, x - 1, y - 1)
-
-                itemCount++
-                spaceX += 20
-
-                if (itemCount == 3) {
-                    spaceX = 0
-                    rows += 20
-                    itemCount = 0
+            when(getRecipe) {
+                is ShapedRecipe -> {
+                    getRecipe.ingredients.forEachIndexed { index, ingredient ->
+                        val width = getRecipe.width
+                        val height = getRecipe.height
+                        val recipeX = index % width
+                        val recipeY = index / width
+                        val offsetX = (3 - width) / 2
+                        val offsetY = (3 - height) / 2
+                        val x = recipeX + offsetX
+                        val y = recipeY + offsetY
+                        crafting[y * 3 + x] = ingredient.items.toList()
+                    }
                 }
 
-                if (itemStack.item != Items.AIR) {
-                    if (mouseX >= x && mouseX < x + itemSize && mouseY >= y && mouseY < y + itemSize) {
-                        renderTooltip(font, itemStack, mouseX, mouseY)
+                is SmithingTransformRecipe -> {
+                    val smithRecipe = getRecipe.smithingIngredientsReflective()
+                    smithing[0] = smithRecipe[0].items.toList()
+                    smithing[1] = smithRecipe[1].items.toList()
+                    smithing[2] = smithRecipe[2].items.toList()
+                }
+
+                else -> {
+                    getRecipe.ingredients.forEachIndexed { index, ingredient ->
+                        crafting[index] = ingredient.items.toList()
                     }
                 }
             }
 
             stringWithBackground(
                 1F,
-                Component.literal(name.toString().capsFirst()),
+                Component.literal(TextHelpers.stringIdToName(getRecipe.type.toString())),
                 startX + 27,
-                startY - 16,
+                startY - if(isSmithing) -24 else 16,
                 netheriteBox,
                 subHeaderColour
             )
@@ -148,6 +154,48 @@ object ScreenHelper {
             customItemRenderer(itemStack, x1, y1)
             icon(Icons.MENU_BUTTON.icon(), 18, x1 - 1, y1 - 1)
             renderItemDecorations(font, itemStack, x1, y1)
+
+            fun List<List<ItemStack>>.boxes(isSmithing: Boolean){
+                forEach {
+                    val x = startX + spaceX
+                    val y = startY + rows + if(isSmithing) +40 else 0
+                    val itemStack = it.cycleEntries(tickCount, 20) ?: ItemStack.EMPTY
+                    customItemRenderer(itemStack, x, y)
+                    icon(Icons.MENU_BUTTON.icon(), 18, x - 1, y - 1)
+
+                    spaceX += 20
+
+                    if (!isSmithing) {
+                        itemCount++
+                        if (itemCount == 3) {
+                            spaceX = 0
+                            rows += 20
+                            itemCount = 0
+                        }
+                    }
+
+                    if (itemStack.item == Items.AIR) return@forEach
+                    if (mouseX >= x && mouseX < x + itemSize && mouseY >= y && mouseY < y + itemSize)
+                        renderTooltip(font, itemStack, mouseX, mouseY)
+                }
+            }
+
+            when(getRecipe) {
+                is SmithingTransformRecipe -> smithing.boxes(true)
+                else -> crafting.boxes(false)
+            }
         }
     }
+
+
+    private fun SmithingTransformRecipe.smithingIngredientsReflective(): List<Ingredient> =
+        listOf("template", "base", "addition").mapNotNull { name ->
+            val field = SmithingTransformRecipe::class.java.getDeclaredField(name)
+                .apply { isAccessible = true }
+            when (val value = field.get(this)) {
+                is Ingredient -> value
+                is java.util.Optional<*> -> value.orElse(null) as? Ingredient
+                else -> null
+            }
+        }
 }
