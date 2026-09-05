@@ -1,4 +1,11 @@
 {
   "itemGroup.item_descriptor": "Example Mod Tab",
-  "item_descriptor.text.l_control": "L-Ctrl"
+  "item_descriptor.text.l_control": "L-Ctrl",
+  "item_descriptor.text.show_tooltip": "Show Tooltip",
+  "item_descriptor.text.view": "View",
+  "item_descriptor.text.reset": "Reset",
+  "item_descriptor.text.associated": "Associated",
+  "item_descriptor.text.hold_details": "Hold %s To Explore",
+  "item_descriptor.text.show_recipe": "Show Recipe"
+
 }

@@ -2,6 +2,7 @@ package org.shaydee.item_descriptor
 
 import net.minecraft.client.Minecraft
 import net.neoforged.api.distmarker.Dist
+import net.neoforged.api.distmarker.OnlyIn
 import net.neoforged.fml.common.Mod
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent
 import net.neoforged.fml.loading.FMLEnvironment
@@ -14,6 +15,7 @@ import org.shaydee.item_descriptor.events.ClientEvents
 import thedarkcolour.kotlinforforge.neoforge.forge.MOD_BUS
 import thedarkcolour.kotlinforforge.neoforge.forge.runForDist
 
+@OnlyIn(Dist.CLIENT)
 @Mod(ItemDescriptor.ID)
 class ItemDescriptor {
 
