@@ -4,7 +4,8 @@ import net.minecraft.ChatFormatting
 import net.minecraft.world.item.Items
 import net.minecraft.world.level.block.Blocks
 
-object Descriptions {
+object DescriptionHelpers {
+
     fun String.myFormat(vararg format: ChatFormatting): String {
         val string = format.joinToString { "§${it.char}" }.replace(", ", "")
         return "$string$this§r"
@@ -12,7 +13,7 @@ object Descriptions {
 
     fun String.blockStyle(): String = myFormat(ChatFormatting.LIGHT_PURPLE)
     fun String.itemStyle(): String = myFormat(ChatFormatting.GOLD)
-
+    fun String.valueStyle(): String = myFormat(ChatFormatting.YELLOW)
 
     fun initDescriptions() {
         DescriptionManager.setDescription(Blocks.TNT.asItem(), Items.SAND, Items.GUNPOWDER){
@@ -38,6 +39,7 @@ object Descriptions {
                 Craft stuff with other stuff
             """.trimIndent()
         }
+
         DescriptionManager.createOrSave()
     }
 

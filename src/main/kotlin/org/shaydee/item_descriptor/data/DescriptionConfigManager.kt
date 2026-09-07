@@ -1,7 +1,6 @@
 package org.shaydee.item_descriptor.data
 
 import com.google.gson.GsonBuilder
-import com.sun.beans.introspect.PropertyInfo
 import net.minecraft.client.Minecraft
 import net.minecraft.world.item.Item
 import java.io.File
@@ -40,12 +39,10 @@ object DescriptionManager {
 
     fun setDescription(itemId: String, description: String, vararg associatedItems: String) {
         data.descriptions[itemId] = ItemPropertyData(description, associatedItems.toList())
-        createOrSave()
     }
 
     fun setDescription(item: Item, vararg associated: Item, description: () -> String) {
         data.descriptions[item.descriptionId] = ItemPropertyData(description.invoke(), associated.map { it.descriptionId })
-        createOrSave()
     }
 
     fun removeDescription(itemId: String) {

@@ -10,7 +10,7 @@ import net.neoforged.neoforge.common.NeoForge.EVENT_BUS
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
-import org.shaydee.item_descriptor.data.Descriptions
+import org.shaydee.item_descriptor.data.DescriptionHelpers
 import org.shaydee.item_descriptor.events.ClientEvents
 import thedarkcolour.kotlinforforge.neoforge.forge.MOD_BUS
 import thedarkcolour.kotlinforforge.neoforge.forge.runForDist
@@ -40,7 +40,7 @@ class ItemDescriptor {
     }
 
     private fun onClientSetup(event: FMLClientSetupEvent) {
-        Descriptions.initDescriptions()
+        DescriptionHelpers.initDescriptions()
     }
 
 }
