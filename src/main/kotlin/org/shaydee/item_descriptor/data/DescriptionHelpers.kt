@@ -6,15 +6,25 @@ import net.minecraft.world.level.block.Blocks
 
 object DescriptionHelpers {
 
-    fun String.myFormat(vararg format: ChatFormatting): String {
+    @JvmStatic
+    fun String.textFormat(vararg format: ChatFormatting): String {
         val string = format.joinToString { "§${it.char}" }.replace(", ", "")
         return "$string$this§r"
     }
 
-    fun String.blockStyle(): String = myFormat(ChatFormatting.LIGHT_PURPLE)
-    fun String.itemStyle(): String = myFormat(ChatFormatting.GOLD)
-    fun String.valueStyle(): String = myFormat(ChatFormatting.YELLOW)
+    @JvmStatic
+    fun String.blockStyle(): String = textFormat(ChatFormatting.LIGHT_PURPLE)
 
+    @JvmStatic
+    fun String.itemStyle(): String = textFormat(ChatFormatting.GOLD)
+
+    @JvmStatic
+    fun String.valueStyle(): String = textFormat(ChatFormatting.YELLOW)
+
+    @JvmStatic
+    fun String.locationStyle(): String = textFormat(ChatFormatting.AQUA)
+
+    @JvmStatic
     fun initDescriptions() {
         DescriptionManager.setDescription(Blocks.TNT.asItem(), Items.SAND, Items.GUNPOWDER){
             val gunPowder = "Gunpowder".itemStyle()
@@ -33,13 +43,7 @@ object DescriptionHelpers {
                 TNT is a simple tool, but its power should not be underestimated. Whether you are clearing a tunnel, opening up a new area, or making questionable decisions with explosives, TNT is more than capable of getting the job done.
             """.trimIndent()
         }
-
-        DescriptionManager.setDescription(Items.CRAFTER, Items.REDSTONE, Items.IRON_INGOT, Items.CRAFTING_TABLE, Items.DISPENSER){
-            """
-                Craft stuff with other stuff
-            """.trimIndent()
-        }
-
+        
         DescriptionManager.createOrSave()
     }
 

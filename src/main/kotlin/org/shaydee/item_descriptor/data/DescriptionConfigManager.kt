@@ -23,8 +23,10 @@ object DescriptionManager {
 
 
     fun createOrSave() {
-        configFile.parentFile.mkdirs()
-        configFile.writeText(gson.toJson(data))
+        if(!configFile.exists()){
+            configFile.parentFile.mkdirs()
+            configFile.writeText(gson.toJson(data))
+        }
     }
 
     fun load(): Boolean {

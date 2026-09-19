@@ -1,18 +1,36 @@
 package org.shaydee.item_descriptor.screen
 
 import com.mojang.blaze3d.platform.InputConstants
+import com.mojang.blaze3d.platform.Lighting
+import com.mojang.math.Axis
+import com.sun.beans.introspect.PropertyInfo
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.screens.Screen
+import net.minecraft.client.model.HumanoidModel
+import net.minecraft.client.model.geom.ModelLayers
+import net.minecraft.client.multiplayer.ClientLevel
+import net.minecraft.client.renderer.LightTexture.FULL_BRIGHT
+import net.minecraft.client.renderer.RenderType
+import net.minecraft.client.renderer.entity.ItemRenderer
+import net.minecraft.client.renderer.entity.LivingEntityRenderer
+import net.minecraft.client.renderer.entity.layers.HumanoidArmorLayer
+import net.minecraft.client.renderer.texture.OverlayTexture
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
+import net.minecraft.world.entity.EntityType
+import net.minecraft.world.entity.EquipmentSlot
+import net.minecraft.world.entity.LivingEntity
+import net.minecraft.world.entity.decoration.ArmorStand
+import net.minecraft.world.item.ArmorItem
 import net.minecraft.world.item.ItemDisplayContext
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.crafting.RecipeHolder
 import net.neoforged.api.distmarker.Dist
 import net.neoforged.api.distmarker.OnlyIn
 import org.joml.Quaternionf
+import org.openjdk.nashorn.internal.objects.NativeRegExp.source
 import org.shaydee.item_descriptor.CustomButton
 import org.shaydee.item_descriptor.Helpers.prefixComponent
 import org.shaydee.item_descriptor.Helpers.toComponent
@@ -34,11 +52,13 @@ import org.shaydee.shaydeeapi.helpers.ClientHelpers.drawCenterComponent
 import org.shaydee.shaydeeapi.helpers.ClientHelpers.fadeBlack
 import org.shaydee.shaydeeapi.helpers.ClientHelpers.icon
 import org.shaydee.shaydeeapi.helpers.ClientHelpers.refinedTooltip
+import org.shaydee.shaydeeapi.helpers.ClientHelpers.renderTooltipFromPos
 import org.shaydee.shaydeeapi.helpers.ClientHelpers.stringWithBackground
 import org.shaydee.shaydeeapi.helpers.ColourHelpers
 import org.shaydee.shaydeeapi.helpers.ColourHelpers.headerColour
 import org.shaydee.shaydeeapi.helpers.ColourHelpers.netheriteBox
 import org.shaydee.shaydeeapi.helpers.ColourHelpers.subHeaderColour
+import org.shaydee.shaydeeapi.helpers.EntityHelpers
 import org.shaydee.shaydeeapi.helpers.RenderHelpers.customItemRendererQ
 import org.shaydee.shaydeeapi.helpers.TextHelpers
 import org.shaydee.shaydeeapi.helpers.TextHelpers.spacer
@@ -49,16 +69,18 @@ import kotlin.math.min
 @OnlyIn(Dist.CLIENT)
 class ItemDescriptorScreen (
     val codec: ItemStack,
-    private val lastScreen: Screen
+    val lastScreen: Screen
 ) : AbstractScreen() {
 
     val graphics = GuiGraphics(getMc(), getMc().renderBuffers().bufferSource())
     var showTooltip: Boolean = false
     var displayContext: ItemDisplayContext = ItemDisplayContext.GUI
     var recipeType: List<RecipeHolder<*>>? = null
+    val associatedItems = mutableListOf<ItemStack>()
 
     private val startAnim: Boolean = true
     private var fade: Float = 0f
+
     var targetPanX = 0.0
     var targetPanY = 0.0
     var itemRotation = Quaternionf() // persistent, accumulated orientation
@@ -86,6 +108,7 @@ class ItemDescriptorScreen (
     private fun uiFade(): Int = fadeBlack(0.8f)
     private fun hasValidDescription(): Boolean = descriptionComponents().isNotEmpty() || recipeType != null
     override fun isPauseScreen(): Boolean = false
+
 
     private fun inBoundsItem(mouseX: Double, mouseY: Double): Boolean =
         mouseX.toInt() in minX..maxX && mouseY.toInt() in minY..maxY
@@ -151,10 +174,25 @@ class ItemDescriptorScreen (
         }
     }
 
+    private fun additionalInformation() {
+        associatedItems.clear()
+        val others = DescriptionManager.getDescription(codec.item)?.associatedItems ?: return
+        if(others.isEmpty()) return
+
+        others.forEachIndexed { index, it ->
+            val split = it.split(".")
+            val registry = BuiltInRegistries.ITEM.get(ResourceLocation.tryBuild(split[1], split[2]))
+            val item = registry.defaultInstance
+            if(item.isEmpty) return@forEachIndexed
+
+            associatedItems.add(item)
+        }
+    }
+
     fun sharedButton(
         posX: Int,
         posY: Int,
-        icon: ResourceLocation,
+        icon: MultiIconType,
         hoverComponent: Component,
         onClick: () -> Unit
     ) = CustomButton(
@@ -164,8 +202,8 @@ class ItemDescriptorScreen (
         showHover = true,
         canPress = true,
         isSelected = false,
-        colour = ColourHelpers.goldCoin,
-        buttonOverlay = MultiIconType.TextureIcon(icon),
+        colour = if(icon is MultiIconType.TextureIcon) ColourHelpers.goldCoin else 1,
+        buttonOverlay = icon,
         onHover = { gui, x, y  -> gui.refinedTooltip(x, y, hoverComponent) },
     ){
         onClick()
@@ -183,18 +221,22 @@ class ItemDescriptorScreen (
         maxX = startX1 + withPadding.toInt() - 2
         maxY = startY1 + withPadding.toInt() - 2
 
+        additionalInformation()
+
         val posX = width / 2 - if(hasValidDescription()) 185 else 101
         val buttons = ButtonTypes.entries.filter { it.condition(this) }
-        val posY = height / 2 - (buttons.size*8) + 2
+        val adjustedSize = buttons.size * 8
+        val posY = height / 2 - adjustedSize + 2
 
         this.renderable { gui, mouseX, mouseY, partial ->
-            gui.boxMaker(posX-3, posY-3, 10, (buttons.size*8) + 2, headerColour, ColourHelpers.boxColour)
+            gui.boxMaker(posX-3, posY-3, 10, adjustedSize + 2, headerColour, ColourHelpers.boxColour)
         }
 
         var spacer = 0
+
         buttons.forEach {
             this.addRenderableWidget(
-                sharedButton(posX, posY + spacer, it.displayName, it.details(this)){
+                sharedButton(posX, posY + spacer, it.displayName.invoke(this), it.details(this)){
                     this.rebuildWidgets()
                     it.onClick.invoke(this)
                 }
@@ -291,6 +333,7 @@ class ItemDescriptorScreen (
         val startX = graphics.centerX() - size / 2f - shiftWithX()
         val startY = graphics.centerY() - size / 2f - shiftWithY
 
+
         graphics.customItemRendererQ(
             codec,
             (startX + panX).toFloat(),
@@ -312,14 +355,12 @@ class ItemDescriptorScreen (
         graphics.boxMaker(startX1, startY1, widthOffset, widthOffset, colourBorder, 0)
     }
 
-    private fun additionalInformation(graphics: GuiGraphics, mouseX: Int, mouseY: Int) {
-        val mc = minecraft ?: return
-        val sharedY = graphics.centerY() + shiftWithY + 112
-        val others = DescriptionManager.getDescription(codec.item)?.associatedItems ?: return
-        if(others.isEmpty()) return
-        val associated = "associated".prefixComponent(ColourHelpers.goldCoin)
 
-        val width = max(others.size * 12, 34)
+    private fun additionalInformation(graphics: GuiGraphics, mouseX: Int, mouseY: Int) {
+        if(associatedItems.isEmpty()) return
+        val sharedY = graphics.centerY() + shiftWithY + 112
+        val associated = "associated".prefixComponent(ColourHelpers.goldCoin)
+        val width = max(associatedItems.size * 12, 34)
         val sharedX = graphics.centerX() + 1
         graphics.customisableIcon(Icons.ATTACHMENT.icon(), sharedX,sharedY - 24, size = 22, rotation = 180f)
         graphics.drawCenterComponent(associated, sharedX, sharedY - 16, 0)
@@ -328,19 +369,12 @@ class ItemDescriptorScreen (
         var spacer = 0
         val itemSize = 16
         val spacing = 20
-        val totalWidth = (others.size - 1) * spacing + itemSize
+        val totalWidth = (associatedItems.size - 1) * spacing + itemSize
         val startX = sharedX - totalWidth / 2
-        others.forEachIndexed { index, it ->
+        associatedItems.forEachIndexed { index, it ->
             val x = startX + index * spacing
-            val split = it.split(".")
-            val registry = BuiltInRegistries.ITEM.get(ResourceLocation.tryBuild(split[1], split[2]))
-            val item = registry.defaultInstance
-            if(item.isEmpty) return@forEachIndexed
-
-            graphics.renderItem(item, x, sharedY - 4)
-            if (mouseX >= x && mouseX < x + itemSize && mouseY >= sharedY && mouseY < sharedY + itemSize) {
-                graphics.renderTooltip(mc.font, item, mouseX, mouseY)
-            }
+            graphics.renderItem(it, x, sharedY - 4)
+            graphics.renderTooltipFromPos(mouseX, mouseY, x, sharedY - 4, font, it)
             spacer += spacing
         }
     }
@@ -348,7 +382,7 @@ class ItemDescriptorScreen (
     private fun description(graphics: GuiGraphics, mouseX: Int, mouseY: Int) {
         when(hasValidDescription()) {
             false -> return
-            else -> graphics.boxMaker(startX1 + 169, startY1, widthOffset, widthOffset, 0, uiFade(), uiFade())
+            else -> graphics.boxMaker(startX1 + 169, startY1, widthOffset-1, widthOffset, 0, uiFade(), uiFade())
         }
 
         val x = graphics.centerX() + 4
@@ -362,7 +396,7 @@ class ItemDescriptorScreen (
     fun descriptionComponents(): List<Component> {
         val itemDescription = DescriptionManager.getDescription(codec.item)?.mainItem ?: ""
         val text = TextHelpers.withStyleComponentTrans(itemDescription, subHeaderColour)
-        val description = TextHelpers.multiLineComponent(text.string, headerColour, ColourHelpers.offWhite, "", 290, true).toMutableList()
+        val description = TextHelpers.multiLineComponent(text.string, headerColour, ColourHelpers.offWhite, "", 280, true).toMutableList()
 
 //        if(codec.tags.toList().isNotEmpty()) {
 //            if(itemDescription.isNotEmpty()) description.spacer()

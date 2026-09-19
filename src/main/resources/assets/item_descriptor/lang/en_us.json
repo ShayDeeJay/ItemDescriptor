@@ -6,6 +6,7 @@
   "item_descriptor.text.reset": "Reset",
   "item_descriptor.text.associated": "Associated",
   "item_descriptor.text.hold_details": "Hold %s To Explore",
-  "item_descriptor.text.show_recipe": "Show Recipe"
+  "item_descriptor.text.show_recipe": "Show Recipe",
+  "item_descriptor.text.previous_screen": "Previous Screen"
 
 }

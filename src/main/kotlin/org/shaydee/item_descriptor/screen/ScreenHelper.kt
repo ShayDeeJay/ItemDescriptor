@@ -57,6 +57,7 @@ object ScreenHelper {
             graphics.displayString(it, x, ((y - shiftWithY - 12 + spacer) + panText).toInt())
             spacer += mc.font.lineHeight
         }
+
         descriptionScrollBar(mouseX, mouseY, graphics)
         graphics.flush()
         graphics.disableScissor()

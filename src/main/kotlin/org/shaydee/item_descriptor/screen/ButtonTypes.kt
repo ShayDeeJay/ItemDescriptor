@@ -9,17 +9,32 @@ import org.joml.Quaternionf
 import org.shaydee.item_descriptor.Helpers.prefixComponent
 import org.shaydee.item_descriptor.Helpers.toComponent
 import org.shaydee.shaydeeapi.client.Icons
+import org.shaydee.shaydeeapi.client.MultiIconType
 import org.shaydee.shaydeeapi.helpers.TextHelpers.capsFirst
 
 enum class ButtonTypes(
-    val displayName: ResourceLocation,
+    val displayName: (ItemDescriptorScreen) -> MultiIconType,
     val condition: (ItemDescriptorScreen) -> Boolean,
     val details: (ItemDescriptorScreen) -> Component,
     val onClick: (ItemDescriptorScreen) -> Unit
 ) {
 
+    BACK(
+        {
+            val lastScreen = it.lastScreen
+            if(lastScreen is ItemDescriptorScreen) MultiIconType.ItemIcon(lastScreen.codec.item) else MultiIconType.TextureIcon(Icons.BACK.icon())
+        },
+        { true },
+        {
+            if(it.lastScreen is ItemDescriptorScreen) {
+                "previous_screen".prefixComponent(isHeader = true).copy().append(it.lastScreen.codec.hoverName)
+            } else "previous_screen".prefixComponent()
+        },
+        { it.getMc().setScreen(it.lastScreen) }
+    ),
+
     RESET(
-        Icons.REFRESH.icon(),
+        { MultiIconType.TextureIcon(Icons.REFRESH.icon()) },
         { true },
         { "reset".prefixComponent() },
         {
@@ -36,7 +51,7 @@ enum class ButtonTypes(
     ),
 
     VIEW(
-        Icons.VIEW.icon(),
+        { MultiIconType.TextureIcon(Icons.VIEW.icon()) },
         { true },
         {
             val context = it.displayContext.name.lowercase().replace("_", " ").capsFirst().toComponent()
@@ -51,7 +66,7 @@ enum class ButtonTypes(
     ),
 
     TOOL_TIP(
-        Icons.INFORMATION.icon(),
+        { MultiIconType.TextureIcon(Icons.INFORMATION.icon()) },
         { true },
         {
             val showTooltip = it.showTooltip.toString().capsFirst().toComponent()
@@ -61,7 +76,7 @@ enum class ButtonTypes(
     ),
 
     RECIPE(
-        Icons.CRAFTING.icon(),
+        { MultiIconType.TextureIcon(Icons.CRAFTING.icon()) },
         { it.getRecipe().isNotEmpty() },
         {
             val recipeSuffix = (it.recipeType != null).toString().capsFirst().toComponent()
@@ -69,5 +84,4 @@ enum class ButtonTypes(
         },
         { it.recipeType = if(it.recipeType != null) null else it.getRecipe().ifEmpty { null } }
     )
-
 }

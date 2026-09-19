@@ -16,6 +16,7 @@ import org.shaydee.shaydeeapi.helpers.ClientHelpers.icon
 import org.shaydee.shaydeeapi.helpers.ClientHelpers.refinedTooltip
 import org.shaydee.shaydeeapi.helpers.ColourHelpers
 import org.shaydee.shaydeeapi.helpers.SoundHelpers
+import org.shaydee.shaydeeapi.registry.SoundReg
 import kotlin.text.Typography.half
 
 class CustomButton(
@@ -39,7 +40,7 @@ class CustomButton(
     override fun onPress() = pOnPress.onPress(this)
 
     override fun playDownSound(handler: SoundManager) {
-        if (canPress) SoundHelpers.uiSound(SoundEvents.UI_BUTTON_CLICK.value(), pitch = if(buttonOverlay != null) 1.5f else 0.5F)
+        if (canPress) SoundHelpers.uiSound(SoundReg.INCREASE_SCORE.get(), pitch = if(buttonOverlay != null) 1.5f else 0.5F)
     }
 
     override fun renderWidget(graphics: GuiGraphics, mouseX: Int, mouseY: Int, pPartialTick: Float) {
@@ -56,9 +57,15 @@ class CustomButton(
 
     private fun showIconOrIndex(graphics: GuiGraphics, mc: Minecraft, i1: Int) {
         buttonOverlay?.let {
-            graphics.alphaWrapper(colour) { _ ->
-                MultiIconType.translatedIcon(it, graphics, defaultSize-2, x + 1, y + 1)
+            when(buttonOverlay) {
+                is MultiIconType.TextureIcon -> {
+                    graphics.alphaWrapper(colour) { _ ->
+                        MultiIconType.translatedIcon(it, graphics, defaultSize-2, x + 1, y + 1)
+                    }
+                }
+                else -> MultiIconType.translatedIcon(it, graphics, defaultSize-2, x + 1, y + 1)
             }
+
             return
         }
 

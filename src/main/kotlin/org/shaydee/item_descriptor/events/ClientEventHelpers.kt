@@ -30,6 +30,9 @@ object ClientEventHelpers {
         item: ItemStack,
         current: MutableList<Either<FormattedText, TooltipComponent>>,
     ) {
+        val instance = Minecraft.getInstance()
+        val screen = instance.screen ?: return
+        if(screen is ItemDescriptorScreen && item == screen.codec) return
         if (item.`is`(Items.AIR)) {
             toolTipTimer = 0
             return
@@ -38,9 +41,6 @@ object ClientEventHelpers {
         if(item != previousItem) toolTipTimer = 0
         this.previousItem = item
 
-        val instance = Minecraft.getInstance()
-        val screen = instance.screen
-        if(screen is ItemDescriptorScreen && item == screen.codec) return
 
         val key = KEY_LCONTROL
         val holdToInfo = Helpers.displaySelectedKey("item_descriptor.text.l_control")
