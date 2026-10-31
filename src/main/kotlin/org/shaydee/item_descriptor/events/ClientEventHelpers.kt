@@ -1,6 +1,7 @@
 package org.shaydee.item_descriptor.events
 
 import com.mojang.blaze3d.platform.InputConstants.KEY_LCONTROL
+import com.mojang.blaze3d.platform.InputConstants.KEY_TAB
 import com.mojang.blaze3d.systems.RenderSystem.disableScissor
 import com.mojang.blaze3d.systems.RenderSystem.enableScissor
 import com.mojang.datafixers.util.Either
@@ -42,7 +43,7 @@ object ClientEventHelpers {
         this.previousItem = item
 
 
-        val key = KEY_LCONTROL
+        val key = KEY_TAB
         val holdToInfo = Helpers.displaySelectedKey("item_descriptor.text.l_control")
         val progress = toolTipTimer / 8
         val loading = "█".repeat(progress.coerceAtMost(5))

@@ -5,19 +5,15 @@ import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.components.ImageButton
 import net.minecraft.client.gui.components.WidgetSprites
 import net.minecraft.client.sounds.SoundManager
-import net.minecraft.network.chat.Component
-import net.minecraft.sounds.SoundEvents
 import net.minecraft.util.FastColor
 import org.shaydee.shaydeeapi.client.Icons
 import org.shaydee.shaydeeapi.client.MultiIconType
 import org.shaydee.shaydeeapi.helpers.ClientHelpers.alphaWrapper
 import org.shaydee.shaydeeapi.helpers.ClientHelpers.boxMaker
 import org.shaydee.shaydeeapi.helpers.ClientHelpers.icon
-import org.shaydee.shaydeeapi.helpers.ClientHelpers.refinedTooltip
 import org.shaydee.shaydeeapi.helpers.ColourHelpers
 import org.shaydee.shaydeeapi.helpers.SoundHelpers
 import org.shaydee.shaydeeapi.registry.SoundReg
-import kotlin.text.Typography.half
 
 class CustomButton(
     pX: Int,
@@ -28,7 +24,8 @@ class CustomButton(
     private val canPress: Boolean,
     private val buttonOverlay: MultiIconType? = null,
     private val label: String = "",
-    private val colour: Int = -1,
+    private val highlightColour: Int = -1,
+    private val iconColour: Int? = null,
     private val onHover: (graphics: GuiGraphics, mouseX: Int, mouseY: Int) -> Unit = { a, b, c -> },
     private val pOnPress: OnPress
 ) : ImageButton(pX, pY, defaultSize, defaultSize, WidgetSprites(Icons.MENU_BUTTON.icon(), Icons.MENU_BUTTON.icon()), pOnPress) {
@@ -48,7 +45,7 @@ class CustomButton(
 
         if (this.isMouseOver(mouseX.toDouble(), mouseY.toDouble())) onHover(graphics, mouseX, mouseY)
 
-        val colourFaded = if(colour == -1) FastColor.ARGB32.color(190, ColourHelpers.cosmicPurple) else colour
+        val colourFaded = if(highlightColour == -1) FastColor.ARGB32.color(190, ColourHelpers.cosmicPurple) else highlightColour
         val i1 = totalSize / 2 - 3
 
         renderNameAndBackground(graphics, mc, i1, colourFaded, mouseX, mouseY)
@@ -59,8 +56,11 @@ class CustomButton(
         buttonOverlay?.let {
             when(buttonOverlay) {
                 is MultiIconType.TextureIcon -> {
-                    graphics.alphaWrapper(colour) { _ ->
-                        MultiIconType.translatedIcon(it, graphics, defaultSize-2, x + 1, y + 1)
+                    when(iconColour){
+                        null -> MultiIconType.translatedIcon(it, graphics, defaultSize-2, x + 1, y + 1)
+                        else -> graphics.alphaWrapper(highlightColour) { _ ->
+                            MultiIconType.translatedIcon(it, graphics, defaultSize-2, x + 1, y + 1)
+                        }
                     }
                 }
                 else -> MultiIconType.translatedIcon(it, graphics, defaultSize-2, x + 1, y + 1)

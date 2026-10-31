@@ -1,39 +1,26 @@
 package org.shaydee.item_descriptor.screen
 
+import com.ibm.icu.text.PluralRules
 import com.mojang.blaze3d.platform.InputConstants
-import com.mojang.blaze3d.platform.Lighting
-import com.mojang.math.Axis
-import com.sun.beans.introspect.PropertyInfo
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.screens.Screen
-import net.minecraft.client.model.HumanoidModel
-import net.minecraft.client.model.geom.ModelLayers
-import net.minecraft.client.multiplayer.ClientLevel
-import net.minecraft.client.renderer.LightTexture.FULL_BRIGHT
-import net.minecraft.client.renderer.RenderType
-import net.minecraft.client.renderer.entity.ItemRenderer
-import net.minecraft.client.renderer.entity.LivingEntityRenderer
-import net.minecraft.client.renderer.entity.layers.HumanoidArmorLayer
-import net.minecraft.client.renderer.texture.OverlayTexture
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
-import net.minecraft.world.entity.EntityType
-import net.minecraft.world.entity.EquipmentSlot
-import net.minecraft.world.entity.LivingEntity
-import net.minecraft.world.entity.decoration.ArmorStand
-import net.minecraft.world.item.ArmorItem
+import net.minecraft.world.item.CreativeModeTab
 import net.minecraft.world.item.ItemDisplayContext
 import net.minecraft.world.item.ItemStack
+import net.minecraft.world.item.ItemStackLinkedSet
+import net.minecraft.world.item.Items
 import net.minecraft.world.item.crafting.RecipeHolder
 import net.neoforged.api.distmarker.Dist
 import net.neoforged.api.distmarker.OnlyIn
+import net.neoforged.fml.ModList
+import net.neoforged.neoforge.common.CreativeModeTabRegistry
 import org.joml.Quaternionf
-import org.openjdk.nashorn.internal.objects.NativeRegExp.source
 import org.shaydee.item_descriptor.CustomButton
 import org.shaydee.item_descriptor.Helpers.prefixComponent
-import org.shaydee.item_descriptor.Helpers.toComponent
 import org.shaydee.item_descriptor.data.DescriptionManager
 import org.shaydee.item_descriptor.screen.ScreenHelper.renderDescription
 import org.shaydee.item_descriptor.screen.ScreenHelper.renderRecipes
@@ -44,13 +31,11 @@ import org.shaydee.shaydeeapi.client.MultiIconType
 import org.shaydee.shaydeeapi.helpers.ClientHelpers
 import org.shaydee.shaydeeapi.helpers.ClientHelpers.bezelMaker
 import org.shaydee.shaydeeapi.helpers.ClientHelpers.boxMaker
-import org.shaydee.shaydeeapi.helpers.ClientHelpers.centerAlignment
 import org.shaydee.shaydeeapi.helpers.ClientHelpers.centerX
 import org.shaydee.shaydeeapi.helpers.ClientHelpers.centerY
 import org.shaydee.shaydeeapi.helpers.ClientHelpers.customisableIcon
 import org.shaydee.shaydeeapi.helpers.ClientHelpers.drawCenterComponent
 import org.shaydee.shaydeeapi.helpers.ClientHelpers.fadeBlack
-import org.shaydee.shaydeeapi.helpers.ClientHelpers.icon
 import org.shaydee.shaydeeapi.helpers.ClientHelpers.refinedTooltip
 import org.shaydee.shaydeeapi.helpers.ClientHelpers.renderTooltipFromPos
 import org.shaydee.shaydeeapi.helpers.ClientHelpers.stringWithBackground
@@ -58,10 +43,10 @@ import org.shaydee.shaydeeapi.helpers.ColourHelpers
 import org.shaydee.shaydeeapi.helpers.ColourHelpers.headerColour
 import org.shaydee.shaydeeapi.helpers.ColourHelpers.netheriteBox
 import org.shaydee.shaydeeapi.helpers.ColourHelpers.subHeaderColour
-import org.shaydee.shaydeeapi.helpers.EntityHelpers
+import org.shaydee.shaydeeapi.helpers.RenderHelpers.customItemRenderer
 import org.shaydee.shaydeeapi.helpers.RenderHelpers.customItemRendererQ
 import org.shaydee.shaydeeapi.helpers.TextHelpers
-import org.shaydee.shaydeeapi.helpers.TextHelpers.spacer
+import kotlin.collections.mutableMapOf
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -102,13 +87,15 @@ class ItemDescriptorScreen (
     var maxX = startX1 + withPadding.toInt() - 2
     var maxY = startY1 + withPadding.toInt() - 2
 
+    var scrollItems = 0.0
+    var scrollItemsTarget = 0.0
+
     fun getMc(): Minecraft = Minecraft.getInstance()
     fun shiftWithX() = if(hasValidDescription()) 84 else 0
     private fun uiColour() = subHeaderColour
     private fun uiFade(): Int = fadeBlack(0.8f)
     private fun hasValidDescription(): Boolean = descriptionComponents().isNotEmpty() || recipeType != null
     override fun isPauseScreen(): Boolean = false
-
 
     private fun inBoundsItem(mouseX: Double, mouseY: Double): Boolean =
         mouseX.toInt() in minX..maxX && mouseY.toInt() in minY..maxY
@@ -155,6 +142,7 @@ class ItemDescriptorScreen (
         panY += (targetPanY - panY) * 0.15
         itemRotation.nlerp(targetRotation, 0.15f, itemRotation)
         panText += (panTextTarget - panText) * 0.15
+        scrollItems += (scrollItemsTarget - scrollItems) * 0.1
         zoomX += (smoothToX - zoomX) * 0.1
     }
 
@@ -194,23 +182,70 @@ class ItemDescriptorScreen (
         posY: Int,
         icon: MultiIconType,
         hoverComponent: Component,
+        isSelected: Boolean = false,
         onClick: () -> Unit
-    ) = CustomButton(
-        pX = posX,
-        pY = posY,
-        defaultSize = 14,
-        showHover = true,
-        canPress = true,
-        isSelected = false,
-        colour = if(icon is MultiIconType.TextureIcon) ColourHelpers.goldCoin else 1,
-        buttonOverlay = icon,
-        onHover = { gui, x, y  -> gui.refinedTooltip(x, y, hoverComponent) },
-    ){
-        onClick()
-        this.rebuildWidgets()
+    ): CustomButton {
+        val colour = if (icon is MultiIconType.TextureIcon) ColourHelpers.goldCoin else 1
+        return CustomButton(
+            pX = posX,
+            pY = posY,
+            defaultSize = 14,
+            showHover = true,
+            canPress = true,
+            isSelected = isSelected,
+            highlightColour = colour,
+            iconColour = colour,
+            buttonOverlay = icon,
+            onHover = { gui, x, y  -> gui.refinedTooltip(x, y, hoverComponent) },
+        ){
+            onClick()
+            this.rebuildWidgets()
+        }
     }
 
+    val itemLists = mutableMapOf<Pair<Component, ItemStack>, MutableSet<ItemStack>>()
+    val minecraftItem: ItemStack = Items.GRASS_BLOCK.defaultInstance
+    var selectedGroup: Component = Component.empty()
+    var hoveredItem: ItemStack = ItemStack.EMPTY
+
     override fun init() {
+        CreativeModeTabRegistry.getSortedCreativeModeTabs()
+            .filter { it.type == CreativeModeTab.Type.CATEGORY } // skip search/hotbar/inventory tabs
+            .forEach { tab ->
+                val displayItems = tab.displayItems
+                displayItems.forEach { stack ->
+                    val modId = BuiltInRegistries.ITEM.getKey(stack.item).namespace
+                    val x = ModList.get().mods.firstOrNull { it.modId == modId }
+                    val displayName = Component.literal(x?.displayName ?: return@forEach)
+                    val modIcon = if (modId == "minecraft") minecraftItem else tab.iconItem
+                    val modData = Pair(displayName, modIcon)
+                    itemLists
+                        .getOrPut(modData) { ItemStackLinkedSet.createTypeAndComponentsSet() }
+                        .add(stack)
+                }
+            }
+
+        val startX = 2
+        var xSpacer = startX
+        var ySpacer = 4
+        var count = 0
+
+        itemLists.forEach {
+            this.addRenderableWidget(
+                sharedButton(xSpacer, ySpacer, MultiIconType.ItemIcon(it.key.second.item), it.key.first, selectedGroup.string == it.key.first.string){
+                    selectedGroup = it.key.first
+                    scrollItems = 0.0
+                    scrollItemsTarget = 0.0
+                }
+            )
+            count++
+            xSpacer += 16
+            if(count % 5 == 0) {
+                xSpacer = startX
+                ySpacer += 10
+            }
+        }
+
         actualSize = 160F
         withPadding = actualSize + 10
         startX1 = (graphics.centerX() - withPadding / 2).toInt() - shiftWithX()
@@ -245,9 +280,59 @@ class ItemDescriptorScreen (
         }
     }
 
+    fun getSelected() = itemLists.filter { it.key.first == selectedGroup }
+
     override fun render(graphics: GuiGraphics, mouseX: Int, mouseY: Int, partialTick: Float) {
         if(codec.isEmpty) return
+
         extraBlur(partialTick)
+        val startXBound = 30
+        val startYBound = 8
+        var startX = startXBound
+        var startY = 24
+        var itemCount = 0
+        val maxItemsPerRow = 12
+
+        if(selectedGroup != Component.empty()) {
+//            graphics.boxMaker(startX - 28, startY + 14, 79, 75, fillColour = ColourHelpers.boxColour)
+            getSelected().firstNotNullOf {(tabInfo, items) ->
+                if(startY <= height/2) {
+                    graphics.customItemRenderer(tabInfo.second, 2, startY - 3, size = 14f)
+                    graphics.stringWithBackground(1f, Component.literal("   ${tabInfo.first.string}"), 2, startY, ColourHelpers.boxColour, center = false)
+                }
+
+                graphics.enableScissor(startX - 28, startY + 16, width, height/2 + 28)
+
+                items.sortedBy { it.descriptionId }.forEach {
+                    itemCount++
+                    val x = startX - 28
+                    val y = startY + 16 + scrollItems.toInt()
+                    if(y > (height/2) + 30) return@forEach
+                    if(y > 20){
+
+                        graphics.customItemRenderer(it, x, y)
+                        val itemSize = 16
+
+                        if (mouseX >= x && mouseX < x + itemSize && mouseY >= y && mouseY < y + itemSize) {
+                            this.hoveredItem = it
+                        }
+                    }
+                    startX += 20
+                    if(itemCount % maxItemsPerRow == 0) {
+                        startX = startXBound
+                        startY += 20
+                    }
+                }
+                startY += 44
+                startX = startXBound
+
+                graphics.disableScissor()
+            }
+            if(!hoveredItem.isEmpty) graphics.renderTooltip(font, hoveredItem, mouseX, mouseY)
+            hoveredItem = ItemStack.EMPTY
+        }
+
+
         smoothingAnimations()
         slideGuiStats()
         renderHeader(graphics)
@@ -286,6 +371,10 @@ class ItemDescriptorScreen (
         }
 
         if(inBoundsItem(mouseX, mouseY)) smoothToX = (smoothToX + scrollY * scaleFactor).coerceIn(-50.0, 400.0)
+
+        val rows = ((getSelected().map { it.value }.first().size) / 12) - 6
+        val sizes = rows * 20
+        scrollItemsTarget  = (scrollItemsTarget+(scrollY*20f)).coerceIn(min((-sizes).toDouble() + 10, -0.1), 0.0)
 
         return true
     }

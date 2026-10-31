@@ -1,6 +1,6 @@
 {
   "itemGroup.item_descriptor": "Example Mod Tab",
-  "item_descriptor.text.l_control": "L-Ctrl",
+  "item_descriptor.text.l_control": "Tab",
   "item_descriptor.text.show_tooltip": "Show Tooltip",
   "item_descriptor.text.view": "View",
   "item_descriptor.text.reset": "Reset",
