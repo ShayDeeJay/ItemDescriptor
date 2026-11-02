@@ -84,11 +84,11 @@ class CustomButton(
             val inset = defaultSize/10
 
             graphics.renderOutline(
-                x + inset,
-                y + inset,
-                defaultSize - (inset * 2),
-                defaultSize - (inset * 2),
-                colourFaded
+                x + inset - 1,
+                y + inset - 1,
+                defaultSize - (inset * 2) + 2,
+                defaultSize - (inset * 2) + 2,
+                ColourHelpers.legendary
             )
         }
 

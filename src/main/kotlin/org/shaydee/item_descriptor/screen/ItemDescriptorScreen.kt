@@ -9,6 +9,7 @@ import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.item.CreativeModeTab
+import net.minecraft.world.item.CreativeModeTabs
 import net.minecraft.world.item.ItemDisplayContext
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.ItemStackLinkedSet
@@ -141,7 +142,7 @@ class ItemDescriptorScreen (
         panX += (targetPanX - panX) * 0.15
         panY += (targetPanY - panY) * 0.15
         itemRotation.nlerp(targetRotation, 0.15f, itemRotation)
-        panText += (panTextTarget - panText) * 0.15
+        panText += (panTextTarget - panText) * 0.1
         scrollItems += (scrollItemsTarget - scrollItems) * 0.1
         zoomX += (smoothToX - zoomX) * 0.1
     }
@@ -209,7 +210,9 @@ class ItemDescriptorScreen (
     var hoveredItem: ItemStack = ItemStack.EMPTY
 
     override fun init() {
-        CreativeModeTabRegistry.getSortedCreativeModeTabs()
+        super.init()
+
+        BuiltInRegistries.CREATIVE_MODE_TAB
             .filter { it.type == CreativeModeTab.Type.CATEGORY } // skip search/hotbar/inventory tabs
             .forEach { tab ->
                 val displayItems = tab.displayItems
@@ -291,7 +294,7 @@ class ItemDescriptorScreen (
         var startX = startXBound
         var startY = 24
         var itemCount = 0
-        val maxItemsPerRow = 12
+        val maxItemsPerRow = width/80
 
         if(selectedGroup != Component.empty()) {
 //            graphics.boxMaker(startX - 28, startY + 14, 79, 75, fillColour = ColourHelpers.boxColour)
@@ -323,7 +326,7 @@ class ItemDescriptorScreen (
                         startY += 20
                     }
                 }
-                startY += 44
+                startY += 64
                 startX = startXBound
 
                 graphics.disableScissor()
@@ -357,6 +360,8 @@ class ItemDescriptorScreen (
         }
     }
 
+
+
     override fun mouseScrolled(
         mouseX: Double,
         mouseY: Double,
@@ -372,7 +377,8 @@ class ItemDescriptorScreen (
 
         if(inBoundsItem(mouseX, mouseY)) smoothToX = (smoothToX + scrollY * scaleFactor).coerceIn(-50.0, 400.0)
 
-        val rows = ((getSelected().map { it.value }.first().size) / 12) - 6
+        val widthOfItems = width/80
+        val rows = ((getSelected().map { it.value }.first().size) / widthOfItems) - 6
         val sizes = rows * 20
         scrollItemsTarget  = (scrollItemsTarget+(scrollY*20f)).coerceIn(min((-sizes).toDouble() + 10, -0.1), 0.0)
 

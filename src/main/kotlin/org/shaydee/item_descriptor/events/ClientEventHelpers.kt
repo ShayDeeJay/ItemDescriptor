@@ -15,6 +15,7 @@ import net.neoforged.api.distmarker.Dist
 import net.neoforged.api.distmarker.OnlyIn
 import org.shaydee.item_descriptor.Helpers
 import org.shaydee.item_descriptor.screen.ItemDescriptorScreen
+import org.shaydee.item_descriptor.screen.ItemFinderScreen
 import org.shaydee.shaydeeapi.helpers.ClientHelpers
 import org.shaydee.shaydeeapi.helpers.ClientHelpers.displayString
 import org.shaydee.shaydeeapi.helpers.ColourHelpers
@@ -54,7 +55,9 @@ object ClientEventHelpers {
         if (loading.isNotEmpty()) current.add(Either.left(literal))
         if (ClientHelpers.isKeyDown(key)) toolTipTimer++ else toolTipTimer = 0
         if (progress >= 5) {
-            instance.setScreen(ItemDescriptorScreen(item, screen ?: return))
+
+            instance.setScreen(ItemFinderScreen(item, screen))
+//            instance.setScreen(ItemDescriptorScreen(item, screen))
             toolTipTimer = 0
         }
     }

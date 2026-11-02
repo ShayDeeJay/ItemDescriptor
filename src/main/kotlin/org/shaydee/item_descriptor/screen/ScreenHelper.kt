@@ -17,6 +17,7 @@ import net.minecraft.world.item.crafting.SmithingTransformRecipe
 import net.neoforged.api.distmarker.Dist
 import net.neoforged.api.distmarker.OnlyIn
 import org.shaydee.shaydeeapi.Helpers.cycleEntries
+import org.shaydee.shaydeeapi.client.AbstractScreen
 import org.shaydee.shaydeeapi.client.Icons
 import org.shaydee.shaydeeapi.helpers.ClientHelpers.customisableIcon
 import org.shaydee.shaydeeapi.helpers.ClientHelpers.displayString
@@ -32,7 +33,7 @@ import org.shaydee.shaydeeapi.helpers.TextHelpers
 @OnlyIn(Dist.CLIENT)
 object ScreenHelper {
 
-    fun ItemDescriptorScreen.renderWidgets(
+    fun AbstractScreen.renderWidgets(
         graphics: GuiGraphics,
         mouseX: Int,
         mouseY: Int,
